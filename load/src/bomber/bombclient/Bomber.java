@@ -89,17 +89,17 @@ public class Bomber implements Runnable {
         if (fullUris.size() == 1) {
             uri = fullUris.get(0);
         } else {
-            uri = fullUris.get((int) (r.nextFloat() * fullUris.size()));
+            uri = fullUris.get((int) Math.floor(r.nextFloat() * fullUris.size()));
         }
         List<Param> params = uri.params.params;
         final Param param;
         if (params.size() == 1) {
             param = params.get(0);
         } else {
-            param = params.get((int) (r.nextFloat() * params.size()));
+            param = params.get((int) Math.floor(r.nextFloat() * params.size()));
         }
         List<String> values = param.values;
-        final String paramValue = values.get((int) r.nextFloat() * params.size());
+        final String paramValue = values.get((int) Math.floor(r.nextFloat() * values.size()));
 
         StringBuilder sb = new StringBuilder(uri.path);
         sb.append('?');

@@ -20,8 +20,8 @@ public class TestReceiveHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
-            logger.info("http request received");
             HttpRequest request = (HttpRequest) msg;
+            logger.info("http request received uri {}", request.getUri());
             FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK,
                     Unpooled.copiedBuffer("ok " + request.getUri(), CharsetUtil.UTF_8));
 

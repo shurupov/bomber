@@ -2,8 +2,8 @@ package bomber.bombclient;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.LastHttpContent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,9 +24,10 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
             logger.info("http response received {}", response.getDecoderResult().toString());
         }
 
-        if (msg instanceof LastHttpContent) {
-            LastHttpContent content = (LastHttpContent) msg;
-            logger.info("http content received {}", content.content().readableBytes());
+        if (msg instanceof HttpContent) {
+            HttpContent content = (HttpContent) msg;
+            String contentStr = new String(content.content().array());
+            logger.info("http content received {}", contentStr);
         }
 
     }

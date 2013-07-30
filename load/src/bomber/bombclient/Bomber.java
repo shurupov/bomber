@@ -33,8 +33,10 @@ public class Bomber implements Runnable {
     private static Bomber instance;
 
     private List<Channel> channels;
+    private final Random r = new Random();
 
     private Bomber() {
+        r.setSeed(System.currentTimeMillis());
     }
 
     @Override
@@ -82,7 +84,6 @@ public class Bomber implements Runnable {
     }
 
     private String getRandUri() {
-        Random r = new Random();
         List<FullUri> fullUris = Config.instance().fullUris.fullUris;
         final FullUri uri;
         if (fullUris.size() == 1) {
@@ -119,7 +120,7 @@ public class Bomber implements Runnable {
             FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET,
                     getRandUri());
 
-            channel.writeAndFlush(request);
+            channel.writeAndFlush(request).sync();
             channel.read();
         }
 

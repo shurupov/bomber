@@ -20,7 +20,7 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
 
         if (msg instanceof HttpResponse) {
             HttpResponse response = (HttpResponse) msg;
-            logger.info("http response received {}", response.toString());
+            logger.info("http response received {}", response.getDecoderResult().toString());
         }
 
     }

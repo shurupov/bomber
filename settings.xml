@@ -2,6 +2,7 @@
 <app>
     <host>localhost</host>
     <port>8080</port>
+    <channelCount>10</channelCount>
     <fullUris>
         <fullUri>
             <path>/</path>

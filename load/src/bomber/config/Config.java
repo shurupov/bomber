@@ -21,8 +21,9 @@ public class Config {
 
     public String host;
     public int port;
-    public FullUris fullUris;
+    public int channelCount;
 
+    public FullUris fullUris;
 
     private static Config newInstance() {
 

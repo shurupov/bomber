@@ -11,7 +11,7 @@ public class App {
 
     public static void main(String[] args) throws InterruptedException {
 
-        new Thread(new Bomber()).start();
+        new Thread(Bomber.instance()).start();
 
     }
 

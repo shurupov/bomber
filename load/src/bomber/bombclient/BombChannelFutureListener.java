@@ -1,12 +1,9 @@
 package bomber.bombclient;
 
+import bomber.config.Config;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.handler.codec.http.DefaultFullHttpRequest;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,12 +31,11 @@ public class BombChannelFutureListener implements ChannelFutureListener {
 
         logger.info("Channel created");
 
-        FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET,
-                "/");
-
-        future.channel().writeAndFlush(request).sync();
-        future.channel().read();
-
+        if (channels.size() == Config.instance().channelCount - 1) {
+            synchronized (Bomber.instance()) {
+                Bomber.instance().notify();
+            }
+        }
     }
 
 }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<app>
+    <host>localhost</host>
+    <port>8080</port>
+    <fullUris>
+        <fullUri>
+            <path>/</path>
+            <params>
+                <param>
+                    <name>loc</name>
+                    <file>urls.txt</file>
+                </param>
+            </params>
+        </fullUri>
+    </fullUris>
+</app>

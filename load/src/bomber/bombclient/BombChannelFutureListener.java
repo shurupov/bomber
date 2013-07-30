@@ -10,6 +10,8 @@ import io.netty.handler.codec.http.HttpVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 /**
  * User: Eugene Shurupov
  * Date: 30.07.13
@@ -19,17 +21,24 @@ public class BombChannelFutureListener implements ChannelFutureListener {
 
     private static final Logger logger = LoggerFactory.getLogger(BombChannelFutureListener.class);
 
+    private List<Channel> channels;
+
+    public BombChannelFutureListener(List<Channel> channels) {
+        this.channels = channels;
+    }
+
     @Override
     public void operationComplete(ChannelFuture future) throws Exception {
-        Channel channel = future.channel();
+
+        channels.add(future.channel());
 
         logger.info("Channel created");
 
         FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET,
                 "/");
 
-        channel.writeAndFlush(request).sync();
-        channel.read();
+        future.channel().writeAndFlush(request).sync();
+        future.channel().read();
 
     }
 

@@ -1,5 +1,6 @@
 package bomber.bombclient;
 
+import bomber.config.Config;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -9,6 +10,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * User: Eugene Shurupov
@@ -21,7 +25,7 @@ public class Bomber implements Runnable {
     private static final String HOST = "localhost";
     public static final int PORT = 5555;
 
-    private Channel[] channels;
+    private List<Channel> channels;
 
     private static final Logger logger = LoggerFactory.getLogger(Bomber.class);
 
@@ -30,6 +34,8 @@ public class Bomber implements Runnable {
 
         EventLoopGroup workerGroup = new NioEventLoopGroup();
 
+        Config.instance();
+
         try {
             Bootstrap b = new Bootstrap();
             b.group(workerGroup);
@@ -37,16 +43,7 @@ public class Bomber implements Runnable {
             b.option(ChannelOption.SO_KEEPALIVE, true);
             b.handler(new ClientChannelInitializer());
 
-            channels = new Channel[CHANNEL_COUNT];
-
-            for (int i = 0; i < CHANNEL_COUNT; i++) {
-                // Start the client.
-                ChannelFuture channelFuture = b.connect(HOST, PORT).sync()
-                        .addListener(new BombChannelFutureListener());
-
-                // Wait until the connection is closed.
-                channelFuture.channel().closeFuture().sync();
-            }
+            createChannels(b, CHANNEL_COUNT);
 
         } catch (InterruptedException e) {
             logger.error("Bomber Interrupted Exception", e);
@@ -54,5 +51,18 @@ public class Bomber implements Runnable {
             workerGroup.shutdownGracefully();
         }
 
+    }
+
+    private void createChannels(Bootstrap b, int count) throws InterruptedException {
+
+        channels = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            // Start the client.
+            ChannelFuture channelFuture = b.connect(HOST, PORT).sync()
+                    .addListener(new BombChannelFutureListener(channels));
+
+            // Wait until the connection is closed.
+            channelFuture.channel().closeFuture().sync();
+        }
     }
 }

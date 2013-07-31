@@ -22,6 +22,7 @@ public class Config {
     public String host;
     public int port;
     public int channelCount;
+    public long bombsCount;
 
     public FullUris fullUris;
 

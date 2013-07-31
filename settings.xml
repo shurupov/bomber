@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <app>
-    <host>localhost</host>
+    <host>js27.wesee.com</host>
     <port>8080</port>
     <channelCount>10</channelCount>
+    <bombsCount>20</bombsCount>
     <fullUris>
         <fullUri>
             <path>/</path>

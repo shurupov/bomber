@@ -4,6 +4,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.LastHttpContent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,19 +18,62 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(ResponseClientHandler.class);
 
+    private HttpResponse response;
+    private String contentStr;
+
+    public ChannelRunnable waiter;
+
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 
         if (msg instanceof HttpResponse) {
-            HttpResponse response = (HttpResponse) msg;
-            logger.info("http response received {}", response.getDecoderResult().toString());
+            response = (HttpResponse) msg;
+            if (!HttpResponseStatus.OK.equals(response.getStatus())) {
+                Bomber.instance().failed.incrementAndGet();
+            }
+            logger.debug("http response received {}", response.getStatus());
+            logger.debug("headers {}", response.headers());
         }
 
-        if (msg instanceof HttpContent) {
+        if (msg instanceof  HttpContent) {
             HttpContent content = (HttpContent) msg;
-            String contentStr = new String(content.content().array());
-            logger.info("http content received {}", contentStr);
+            if (content.content().capacity() > 0) {
+                contentStr = new String(content.content().array());
+            }
+            logger.debug("http content received {}", contentStr);
         }
 
+        if (msg instanceof LastHttpContent /*&& !(msg instanceof LastHttpContent)*/) {
+
+            if (HttpResponseStatus.OK.equals(response.getStatus())) {
+
+                if ("\r\n".equals(contentStr)) {
+                    Bomber.instance().notFound0.incrementAndGet();
+                    return;
+                }
+
+                if ("1\r\n".equals(contentStr)) {
+                    Bomber.instance().notFound1.incrementAndGet();
+                    return;
+                }
+
+                Bomber.instance().successful.incrementAndGet();
+
+                synchronized (waiter) {
+                    waiter.notify();
+                }
+
+            }
+
+
+        }
+
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        logger.error("Response is broken", cause);
+        Bomber.instance().channels.remove(ctx.channel());
+        ctx.channel().close();
     }
 }

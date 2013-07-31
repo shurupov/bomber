@@ -24,6 +24,7 @@ public class TestReceiveHandler extends ChannelInboundHandlerAdapter {
             logger.info("http request received uri {}", request.getUri());
             FullHttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK,
                     Unpooled.copiedBuffer("ok " + request.getUri(), CharsetUtil.UTF_8));
+            response.headers().add(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
 
             ctx.channel().writeAndFlush(response).sync();
 

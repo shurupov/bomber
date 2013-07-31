@@ -2,8 +2,9 @@
 <app>
     <host>js27.wesee.com</host>
     <port>8080</port>
-    <channelCount>10</channelCount>
-    <bombsCount>20</bombsCount>
+    <channelCount>800</channelCount>
+    <bombsCount>8000</bombsCount>
+    <timeout>1000</timeout>
     <fullUris>
         <fullUri>
             <path>/</path>

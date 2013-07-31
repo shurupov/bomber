@@ -14,7 +14,7 @@ public class BombChannelFutureListener implements ChannelFutureListener {
 
     private static final Logger logger = LoggerFactory.getLogger(BombChannelFutureListener.class);
 
-    private ChannelRunnable waiter;
+    private final ChannelRunnable waiter;
 
     public BombChannelFutureListener(ChannelRunnable waiter) {
         this.waiter = waiter;
@@ -25,7 +25,7 @@ public class BombChannelFutureListener implements ChannelFutureListener {
 
         Bomber.instance().channels.add(future.channel());
 
-        logger.info("Channel created");
+        logger.debug("Channel created");
 
         synchronized (waiter) {
             waiter.notify();

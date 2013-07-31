@@ -26,13 +26,13 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 
+        try {
+
         if (msg instanceof HttpResponse) {
             response = (HttpResponse) msg;
             if (!HttpResponseStatus.OK.equals(response.getStatus())) {
                 Bomber.instance().failed.incrementAndGet();
             }
-            logger.debug("http response received {}", response.getStatus());
-            logger.debug("headers {}", response.headers());
         }
 
         if (msg instanceof  HttpContent) {
@@ -59,6 +59,10 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
 
                 Bomber.instance().successful.incrementAndGet();
 
+                int responseTime = (int) (System.currentTimeMillis() - waiter.requestBeginTime);
+
+                Bomber.instance().responseTime.add(responseTime);
+
                 synchronized (waiter) {
                     waiter.notify();
                 }
@@ -66,6 +70,10 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
             }
 
 
+        }
+        } catch (Exception e) {
+            logger.error("ResponseClientHandler", e);
+            Bomber.instance().failed.incrementAndGet();
         }
 
     }
@@ -75,5 +83,10 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
         logger.error("Response is broken", cause);
         Bomber.instance().channels.remove(ctx.channel());
         ctx.channel().close();
+        Bomber.instance().all.incrementAndGet();
+        Bomber.instance().failed.incrementAndGet();
+        synchronized (waiter) {
+            waiter.notify();
+        }
     }
 }

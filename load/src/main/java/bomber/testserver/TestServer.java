@@ -23,7 +23,7 @@ public class TestServer {
                     .childHandler(new TestServerChannelInitializer())
                     .childOption(ChannelOption.AUTO_READ, false)
                     .childOption(ChannelOption.TCP_NODELAY, true)
-                    .childOption(ChannelOption.SO_KEEPALIVE, true); // (6)
+                    .option(ChannelOption.SO_KEEPALIVE, true); // (6)
 
             // Bind and start to accept incoming connections.
             ChannelFuture f = b.bind(Config.instance().port).sync(); // (7)

@@ -12,6 +12,8 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -29,6 +31,7 @@ public class Bomber implements Runnable {
     private static Bomber instance;
 
     public List<Channel> channels;
+    public List<Integer> responseTime = new CopyOnWriteArrayList<>();
     private final Random r = new Random();
 
     public AtomicLong all = new AtomicLong(0);
@@ -61,9 +64,31 @@ public class Bomber implements Runnable {
                 createChannels(b);
 
                 do {
-                    Thread.sleep(100);
+                    Thread.sleep(1000);
                     logger.info("all: {}, successful: {}, notFound0: {}, notFound1: {}, failed: {}",
                             all, successful, notFound0, notFound1, failed);
+                    List<Integer> tmpResponseTimes = new ArrayList<>(responseTime);
+
+                    Collections.sort(tmpResponseTimes);
+//                    List<Integer> maxTimes = new ArrayList<>(10);
+                    if (tmpResponseTimes.size() > 0) {
+                        int step = tmpResponseTimes.size() / 10;
+                        StringBuilder sb = new StringBuilder();
+                        for (int i = 1; i <= 10; i++) {
+                            sb.append(i * 10);
+                            sb.append('%');
+                            sb.append(':');
+                            sb.append(' ');
+                            sb.append(tmpResponseTimes.get( step * i - 1 ));
+                            sb.append(' ');
+    //                        maxTimes.add( tmpResponseTimes.get( step * i ) );
+                        }
+                        logger.info(sb.toString());
+                    }
+
+                    logger.info("\n");
+
+
                 } while (all.get() < Config.instance().bombsCount);
 
             }
@@ -110,7 +135,7 @@ public class Bomber implements Runnable {
         sb.append('=');
         sb.append(paramValue);
 
-        logger.info("uri = {}", sb.toString());
+        logger.debug("uri = {}", sb.toString());
 
         return sb.toString();
     }

@@ -23,6 +23,7 @@ public class Config {
     public int port;
     public int channelCount;
     public long bombsCount;
+    public long timeout;
 
     public FullUris fullUris;
 
@@ -34,7 +35,7 @@ public class Config {
         xStream.addImplicitCollection(Params.class, "params", "param", Param.class);
 
         String path = System.getProperty("user.dir") + File.separator + "settings.xml";
-        logger.info("config file path {}", path);
+        logger.debug("config file path {}", path);
 
         Config instance = (Config) xStream.fromXML(new File(path));
 

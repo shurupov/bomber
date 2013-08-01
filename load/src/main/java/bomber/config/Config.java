@@ -24,6 +24,7 @@ public class Config {
     public int channelCount;
     public long bombsCount;
     public long timeout;
+    public int bombsCountFromThread;
 
     public FullUris fullUris;
 

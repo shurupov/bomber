@@ -1,9 +1,12 @@
 package bomber.bombclient;
 
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 /**
  * User: Eugene Shurupov
@@ -15,21 +18,22 @@ public class BombChannelFutureListener implements ChannelFutureListener {
     private static final Logger logger = LoggerFactory.getLogger(BombChannelFutureListener.class);
 
     private final ChannelRunnable waiter;
+    private final Map<Long, Channel> channels;
 
-    public BombChannelFutureListener(ChannelRunnable waiter) {
+    public BombChannelFutureListener(ChannelRunnable waiter, Map<Long, Channel> channels) {
         this.waiter = waiter;
+        this.channels = channels;
     }
 
     @Override
     public void operationComplete(ChannelFuture future) throws Exception {
 
-        Bomber.instance().channels.add(future.channel());
+        channels.put(waiter.key, future.channel());
 
-        logger.debug("Channel created");
+        logger.debug("Channel created. Channel pool size is {}", channels.size());
 
         synchronized (waiter) {
             waiter.notify();
-            waiter.i = Bomber.instance().channels.indexOf(future.channel());
         }
 
     }

@@ -17,13 +17,13 @@ public class TestServer {
         EventLoopGroup bossGroup = new NioEventLoopGroup(); // (1)
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
-            ServerBootstrap b = new ServerBootstrap(); // (2)
-            b.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class) // (3)
-                    .childHandler(new TestServerChannelInitializer())
-                    .childOption(ChannelOption.AUTO_READ, false)
-                    .childOption(ChannelOption.TCP_NODELAY, true)
-                    .option(ChannelOption.SO_KEEPALIVE, true); // (6)
+            ServerBootstrap b = new ServerBootstrap();
+            b.childOption(ChannelOption.AUTO_READ, false);
+            b.childOption(ChannelOption.TCP_NODELAY, true);
+            b.childOption(ChannelOption.SO_KEEPALIVE, true);
+            b.group(bossGroup, workerGroup);
+            b.channel(NioServerSocketChannel.class);
+            b.childHandler(new TestServerChannelInitializer());
 
             // Bind and start to accept incoming connections.
             ChannelFuture f = b.bind(Config.instance().port).sync(); // (7)

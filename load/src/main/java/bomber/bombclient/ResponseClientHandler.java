@@ -28,49 +28,50 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
 
         try {
 
-        if (msg instanceof HttpResponse) {
-            response = (HttpResponse) msg;
-            if (!HttpResponseStatus.OK.equals(response.getStatus())) {
-                Bomber.instance().failed.incrementAndGet();
-            }
-        }
-
-        if (msg instanceof  HttpContent) {
-            HttpContent content = (HttpContent) msg;
-            if (content.content().capacity() > 0) {
-                contentStr = new String(content.content().array());
-            }
-            logger.debug("http content received {}", contentStr);
-        }
-
-        if (msg instanceof LastHttpContent /*&& !(msg instanceof LastHttpContent)*/) {
-
-            if (HttpResponseStatus.OK.equals(response.getStatus())) {
-
-                if ("\r\n".equals(contentStr)) {
-                    Bomber.instance().notFound0.incrementAndGet();
-                    return;
+            if (msg instanceof HttpResponse) {
+                response = (HttpResponse) msg;
+                if (!HttpResponseStatus.OK.equals(response.getStatus())) {
+                    Bomber.instance().failed.incrementAndGet();
                 }
-
-                if ("1\r\n".equals(contentStr)) {
-                    Bomber.instance().notFound1.incrementAndGet();
-                    return;
-                }
-
-                Bomber.instance().successful.incrementAndGet();
-
-                int responseTime = (int) (System.currentTimeMillis() - waiter.requestBeginTime);
-
-                Bomber.instance().responseTime.add(responseTime);
-
-                synchronized (waiter) {
-                    waiter.notify();
-                }
-
             }
 
+            if (msg instanceof  HttpContent) {
+                HttpContent content = (HttpContent) msg;
+                if (content.content().capacity() > 0) {
+                    contentStr = new String(content.content().array());
+                }
+                logger.debug("http content received {}", contentStr);
+            }
 
-        }
+            if (msg instanceof LastHttpContent) {
+
+                if (HttpResponseStatus.OK.equals(response.getStatus())) {
+
+                    if ("\r\n".equals(contentStr)) {
+                        Bomber.instance().notFound0.incrementAndGet();
+                        return;
+                    }
+
+                    if ("1\r\n".equals(contentStr)) {
+                        Bomber.instance().notFound1.incrementAndGet();
+                        return;
+                    }
+
+                    Bomber.instance().successful.incrementAndGet();
+
+                    int responseTime = (int) (System.currentTimeMillis() - waiter.requestBeginTime);
+
+                    Bomber.instance().responseTime.add(responseTime);
+
+                    synchronized (waiter) {
+                        waiter.responseReceived = true;
+                        waiter.notify();
+                    }
+
+                }
+
+
+            }
         } catch (Exception e) {
             logger.error("ResponseClientHandler", e);
             Bomber.instance().failed.incrementAndGet();
@@ -81,10 +82,10 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         logger.error("Response is broken", cause);
-        Bomber.instance().channels.remove(ctx.channel());
         ctx.channel().close();
         Bomber.instance().all.incrementAndGet();
         Bomber.instance().failed.incrementAndGet();
+        Bomber.instance().channels.remove(waiter.key);
         synchronized (waiter) {
             waiter.notify();
         }

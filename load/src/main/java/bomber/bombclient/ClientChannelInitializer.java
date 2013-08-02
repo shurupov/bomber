@@ -19,7 +19,7 @@ public class ClientChannelInitializer extends ChannelInitializer<SocketChannel> 
         pipeline.addLast("encoder", new HttpRequestEncoder());
 
         pipeline.addLast("decoder", new HttpResponseDecoder());
-        pipeline.addLast(new ResponseClientHandler());
+        pipeline.addLast("handler", new ResponseClientHandler());
 
     }
 

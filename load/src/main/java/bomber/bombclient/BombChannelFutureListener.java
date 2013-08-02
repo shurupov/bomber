@@ -17,18 +17,22 @@ public class BombChannelFutureListener implements ChannelFutureListener {
 
     private static final Logger logger = LoggerFactory.getLogger(BombChannelFutureListener.class);
 
-    private final ChannelRunnable waiter;
+    private final Object waiter;
+    private final Long key;
     private final Map<Long, Channel> channels;
 
-    public BombChannelFutureListener(ChannelRunnable waiter, Map<Long, Channel> channels) {
+    public BombChannelFutureListener(Object waiter, Long key, Map<Long, Channel> channels) {
         this.waiter = waiter;
         this.channels = channels;
+        this.key = key;
     }
 
     @Override
     public void operationComplete(ChannelFuture future) throws Exception {
 
-        channels.put(waiter.key, future.channel());
+        channels.put(key, future.channel());
+
+        ChannelRunnable.createdChannels.incrementAndGet();
 
         logger.debug("Channel created. Channel pool size is {}", channels.size());
 

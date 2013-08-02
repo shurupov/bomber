@@ -14,8 +14,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -32,11 +31,15 @@ public class Bomber implements Runnable {
     public Map<Long, Channel> channels = new ConcurrentHashMap<>();
     public List<Integer> responseTime = new CopyOnWriteArrayList<>();
 
+    private Bootstrap bootstrap;
+
     public AtomicLong all = new AtomicLong(0);
     public AtomicLong successful = new AtomicLong(0);
     public AtomicLong notFound1 = new AtomicLong(0);
     public AtomicLong notFound0 = new AtomicLong(0);
     public AtomicLong failed = new AtomicLong(0);
+
+    private List<ScheduledExecutorService> executorServices;
 
     @Override
     public void run() {
@@ -47,19 +50,16 @@ public class Bomber implements Runnable {
 
         try {
 
-            Bootstrap bootstrap = new Bootstrap();
+            bootstrap = new Bootstrap();
             bootstrap.group(workerGroup);
             bootstrap.channel(NioSocketChannel.class);
             bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
             bootstrap.option(ChannelOption.TCP_NODELAY, true);
             bootstrap.handler(new ClientChannelInitializer());
 
-            new Thread(new ThreadCreator(channels, bootstrap)).start();
+            executeThreads();
 
-            do {
-                Thread.sleep(1000);
-                log();
-            } while (all.get() < Config.instance().bombsCount);
+            collectInfoAndLog();
 
             end();
 
@@ -82,35 +82,76 @@ public class Bomber implements Runnable {
         return instance;
     }
 
-    private void log() {
+    private void executeThreads() throws InterruptedException {
 
-        logger.info("all: {}, successful: {}, notFound0: {}, notFound1: {}, failed: {}",
-                all, successful, notFound0, notFound1, failed);
-        List<Integer> tmpResponseTimes = new ArrayList<>(responseTime);
-
-        Collections.sort(tmpResponseTimes);
-        if (tmpResponseTimes.size() > 0) {
-            int step = tmpResponseTimes.size() / 10;
-            StringBuilder sb = new StringBuilder();
-            for (int i = 1; i <= 10; i++) {
-                sb.append(i * 10);
-                sb.append('%');
-                sb.append(':');
-                sb.append(' ');
-                sb.append(tmpResponseTimes.get( step * i - 1 ));
-                sb.append(' ');
-            }
-            logger.info(sb.toString());
+        executorServices = new ArrayList<>(Config.instance().threadCount);
+        for (int i = 0; i < Config.instance().threadCount; i++) {
+            Thread.sleep(10);
+            executorServices.add(Executors.newSingleThreadScheduledExecutor());
+            executorServices.get(i).scheduleWithFixedDelay(new ChannelRunnable(bootstrap, channels),
+                    0, 1, TimeUnit.MILLISECONDS);
         }
 
-        logger.info("Threads: {}", channels.size());
+    }
 
-        logger.info("\n");
+    private void collectInfoAndLog() throws InterruptedException {
+
+        do {
+            Thread.sleep(1000);
+
+            logger.info("all: {}, successful: {}, notFound0: {}, notFound1: {}, failed: {}",
+                    all.get(), successful, notFound0, notFound1, failed);
+            List<Integer> tmpResponseTimes = new ArrayList<>(responseTime);
+
+            Collections.sort(tmpResponseTimes);
+            if (tmpResponseTimes.size() > 0) {
+                int step = tmpResponseTimes.size() / 10;
+                StringBuilder sb = new StringBuilder();
+                for (int i = 1; i <= 10; i++) {
+                    sb.append(i * 10);
+                    sb.append('%');
+                    sb.append(':');
+                    sb.append(' ');
+                    try {
+                        sb.append(tmpResponseTimes.get( step * i - 1 ));
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        sb.append(tmpResponseTimes.get(0));
+                    }
+                    sb.append(' ');
+                }
+                logger.info(sb.toString());
+            }
+
+            int tries = ChannelRunnable.triesCreateChannel.get();
+            int created = ChannelRunnable.createdChannels.get();
+            int waitingFor = tries - created;
+
+            logger.info("active channels {}, working threads {}, thread executed {}",
+                    channels.size(), ChannelRunnable.working, ChannelRunnable.executed.get());
+            logger.info("waiting for channels {}, tries to create channel {}, created channels {}",
+                    waitingFor, tries, created);
+
+            logger.info("\n");
+
+        } while (all.get() < Config.instance().bombsCount);
     }
 
     private void end() throws InterruptedException {
+
+        for (ExecutorService service : executorServices) {
+            service.shutdown();
+        }
+
+        logger.info("shutting down");
+
+        for (ExecutorService service : executorServices) {
+            while (!service.isTerminated()) {}
+        }
+
         for (Channel channel : channels.values()) {
             channel.close().sync();
         }
+
+        logger.info("Shut down");
     }
 }

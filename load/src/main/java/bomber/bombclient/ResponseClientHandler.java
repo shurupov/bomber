@@ -21,7 +21,11 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
     private HttpResponse response;
     private String contentStr;
 
-    public ChannelRunnable waiter;
+    public Object waiter;
+
+    public long requestBeginTime;
+    public boolean responseReceived;
+    public Long key;
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -59,12 +63,12 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
 
                     Bomber.instance().successful.incrementAndGet();
 
-                    int responseTime = (int) (System.currentTimeMillis() - waiter.requestBeginTime);
+                    int responseTime = (int) (System.currentTimeMillis() - requestBeginTime);
 
                     Bomber.instance().responseTime.add(responseTime);
 
                     synchronized (waiter) {
-                        waiter.responseReceived = true;
+                        responseReceived = true;
                         waiter.notify();
                     }
 
@@ -82,10 +86,6 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         logger.error("Response is broken", cause);
-        ctx.channel().close();
-        Bomber.instance().all.incrementAndGet();
-        Bomber.instance().failed.incrementAndGet();
-        Bomber.instance().channels.remove(waiter.key);
         synchronized (waiter) {
             waiter.notify();
         }

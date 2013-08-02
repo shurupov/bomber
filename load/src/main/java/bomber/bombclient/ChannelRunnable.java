@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * User: Eugene Shurupov
@@ -24,15 +25,13 @@ public class ChannelRunnable implements Runnable {
 
     static private final Random RAND = new Random();
 
+    static public AtomicInteger executed = new AtomicInteger(0);
+    static public AtomicInteger working = new AtomicInteger(0);
+    static public AtomicInteger triesCreateChannel = new AtomicInteger(0);
+    static public AtomicInteger createdChannels = new AtomicInteger(0);
+
     private Bootstrap b;
     private Map<Long, Channel> channels;
-    private Channel channel;
-
-
-    public long key;
-    public long requestBeginTime;
-    public boolean responseReceived;
-    public int bombsDropped = 0;
 
     static {
         RAND.setSeed(System.currentTimeMillis());
@@ -47,45 +46,66 @@ public class ChannelRunnable implements Runnable {
     public void run() {
         try {
 
-            key = RAND.nextLong();
+            executed.incrementAndGet();
+            working.incrementAndGet();
 
-            b.connect(Config.instance().host, Config.instance().port).sync()
-                    .addListener(new BombChannelFutureListener(this, channels));
+            int bombsDropped = 0;
 
-            synchronized (this) {
-                wait();
+            long key = RAND.nextLong();
+
+            final Object waiter = new Object();
+
+            //Asynchronous creating channel
+            triesCreateChannel.incrementAndGet();
+            b.connect(Config.instance().host, Config.instance().port)
+                    .addListener(new BombChannelFutureListener(waiter, key, channels));
+
+            //Waiting before channel is created
+            synchronized (waiter) {
+                waiter.wait();
             }
 
-            channel = channels.get(key);
-            channel.pipeline().get(ResponseClientHandler.class).waiter = this;
 
-            while (bombsDropped <= Config.instance().bombsCountFromThread
+            //Initialize channel/handler/thread parameters
+            Channel channel = channels.get(key);
+            while (channel.pipeline().get(ResponseClientHandler.class) == null) {}
+            ResponseClientHandler responseHandler = channel.pipeline().get(ResponseClientHandler.class);
+            responseHandler.waiter = waiter;
+            responseHandler.key = key;
+
+//            logger.info("trying to enter the loop");
+            while (bombsDropped < Config.instance().bombsCountFromThread
                     && Bomber.instance().all.get() < Config.instance().bombsCount
                     && channel.isActive()) {
 
-                responseReceived = false;
+//                logger.info("in loop");
 
+                responseHandler.responseReceived = false;
+
+                //Forming request
                 FullHttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET,
                         getRandUri());
                 request.headers().add(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
 
-                if (channel.isActive()) {
-                    requestBeginTime = System.currentTimeMillis();
-                    channel.writeAndFlush(request).sync();
-                    bombsDropped++;
-                    Bomber.instance().all.incrementAndGet();
-                }
+                //Sending request
+                responseHandler.requestBeginTime = System.currentTimeMillis();
+                channel.writeAndFlush(request).sync();
+                bombsDropped++;
+                Bomber.instance().all.incrementAndGet();
 
-                synchronized (this) {
-                    wait(Config.instance().timeout);
-                    if (!responseReceived) {
-                        end(true);
+                //Waiting for response
+                synchronized (waiter) {
+                    waiter.wait(Config.instance().timeout);
+//                    logger.info("we have ended by we are in loop");
+                    //If response is not received in time get the hell out of here
+                    if (!responseHandler.responseReceived) {
+                        end(key, true);
                         return;
                     }
                 }
             }
 
-            end(false);
+            end(key, false);
 
         } catch (Exception e) {
             logger.error("Channel is broken", e);
@@ -93,7 +113,14 @@ public class ChannelRunnable implements Runnable {
         }
     }
 
-    private void end(boolean failure) {
+    private void end(Long key, boolean failure) {
+        Channel channel = channels.remove(key);
+        working.decrementAndGet();
+//        threadAndChannel--;
+//        constructedThreads--;
+//        logger.info("threads {}, channels {}, threadAndChannel {}, constructedThreads {}",
+//                threadCount, channels.size(), threadAndChannel, constructedThreads);
+
         if (failure) {
             Bomber.instance().failed.incrementAndGet();
         }
@@ -101,7 +128,7 @@ public class ChannelRunnable implements Runnable {
             if (channel != null) {
                 channel.close().sync();
             }
-            channels.remove(key);
+
         } catch (InterruptedException e) {
             logger.error("Failure close channel", e);
         }

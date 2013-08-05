@@ -2,9 +2,9 @@
 <app>
     <host>js27.wesee.com</host>
     <port>8080</port>
-    <threadCount>50</threadCount>
+    <threadCount>1</threadCount>
     <bombsCount>100000</bombsCount>
-    <timeout>100000</timeout>
+    <timeout>1000</timeout>
     <bombsCountFromThread>900</bombsCountFromThread>
     <fullUris>
         <fullUri>

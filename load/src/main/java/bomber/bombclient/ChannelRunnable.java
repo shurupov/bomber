@@ -6,10 +6,13 @@ import bomber.config.Param;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.local.LocalAddress;
 import io.netty.handler.codec.http.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,8 +53,6 @@ public class ChannelRunnable implements Runnable {
 
             int bombsDropped = 0;
 
-            long key = RAND.nextLong();
-
             final Object waiter = new Object();
 
             //Asynchronous creating channel
@@ -69,7 +70,6 @@ public class ChannelRunnable implements Runnable {
             while (channel.pipeline().get(ResponseClientHandler.class) == null) {}
             ResponseClientHandler responseHandler = channel.pipeline().get(ResponseClientHandler.class);
             responseHandler.waiter = waiter;
-            responseHandler.key = key;
 
             while (bombsDropped < Config.instance().bombsCountFromThread
                     && Bomber.instance().all.get() < Config.instance().bombsCount
@@ -84,9 +84,10 @@ public class ChannelRunnable implements Runnable {
 
                 //Sending request
                 responseHandler.requestBeginTime = System.currentTimeMillis();
-                channel.writeAndFlush(request).sync();
+                channel.writeAndFlush(request).addListener(READ);
                 bombsDropped++;
                 Bomber.instance().all.incrementAndGet();
+//                channel.read();
 
                 //Waiting for response
                 synchronized (waiter) {
@@ -94,13 +95,13 @@ public class ChannelRunnable implements Runnable {
 //                    logger.info("we have ended by we are in loop");
                     //If response is not received in time get the hell out of here
                     if (!responseHandler.responseReceived) {
-                        end(channel, true);
+                        end(channel, true, bombsDropped);
                         return;
                     }
                 }
             }
 
-            end(channel, false);
+            end(channel, false, bombsDropped);
 
         } catch (Exception e) {
             logger.error("Channel is broken", e);
@@ -108,16 +109,18 @@ public class ChannelRunnable implements Runnable {
         }
     }
 
-    private void end(Channel channel, boolean failure) {
+    private void end(Channel channel, boolean failure, int bombsDropped) {
         working.decrementAndGet();
         activeChannels.decrementAndGet();
 
         if (failure) {
             Bomber.instance().failed.incrementAndGet();
+            /*logger.info("bombs dropped {}, bad channel localAddress {}",
+                    bombsDropped, channel.localAddress().toString());*/
         }
         try {
             if (channel != null) {
-                channel.pipeline().context(ResponseClientHandler.class).close().sync();
+                channel.close().sync();
             }
 
         } catch (InterruptedException e) {
@@ -154,4 +157,11 @@ public class ChannelRunnable implements Runnable {
 
         return sb.toString();
     }
+
+    final ChannelFutureListener READ = new ChannelFutureListener() {
+        @Override
+        public void operationComplete(ChannelFuture future) {
+            future.channel().read();
+        }
+    };
 }

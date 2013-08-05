@@ -1,6 +1,8 @@
 package bomber.testserver;
 
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.*;
@@ -28,7 +30,7 @@ public class TestReceiveHandler extends ChannelInboundHandlerAdapter {
             response.headers().set(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
             response.headers().set(HttpHeaders.Names.CONTENT_LENGTH, response.content().readableBytes());
 
-            ctx.channel().writeAndFlush(response).sync();
+            ctx.writeAndFlush(response).addListener(READ);
 
         } else {
             ctx.close();
@@ -36,4 +38,11 @@ public class TestReceiveHandler extends ChannelInboundHandlerAdapter {
 
 
     }
+
+    final ChannelFutureListener READ = new ChannelFutureListener() {
+        @Override
+        public void operationComplete(ChannelFuture future) {
+            future.channel().read();
+        }
+    };
 }

@@ -25,7 +25,6 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
 
     public long requestBeginTime;
     public boolean responseReceived;
-    public Long key;
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {

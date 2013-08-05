@@ -5,12 +5,12 @@ import bomber.config.FullUri;
 import bomber.config.Param;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.handler.codec.http.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -29,17 +29,16 @@ public class ChannelRunnable implements Runnable {
     static public AtomicInteger working = new AtomicInteger(0);
     static public AtomicInteger triesCreateChannel = new AtomicInteger(0);
     static public AtomicInteger createdChannels = new AtomicInteger(0);
+    static public AtomicInteger activeChannels = new AtomicInteger(0);
 
     private Bootstrap b;
-    private Map<Long, Channel> channels;
 
     static {
         RAND.setSeed(System.currentTimeMillis());
     }
 
-    public ChannelRunnable(Bootstrap bootstrap, Map<Long, Channel> channels) {
+    public ChannelRunnable(Bootstrap bootstrap) {
         this.b = bootstrap;
-        this.channels = channels;
     }
 
     @Override
@@ -57,28 +56,24 @@ public class ChannelRunnable implements Runnable {
 
             //Asynchronous creating channel
             triesCreateChannel.incrementAndGet();
-            b.connect(Config.instance().host, Config.instance().port)
-                    .addListener(new BombChannelFutureListener(waiter, key, channels));
+            ChannelFuture channelFuture = b.connect(Config.instance().host, Config.instance().port).sync()
+                    .addListener(new BombChannelFutureListener(waiter));
 
             //Waiting before channel is created
             synchronized (waiter) {
                 waiter.wait();
             }
 
-
+            Channel channel = channelFuture.channel();
             //Initialize channel/handler/thread parameters
-            Channel channel = channels.get(key);
             while (channel.pipeline().get(ResponseClientHandler.class) == null) {}
             ResponseClientHandler responseHandler = channel.pipeline().get(ResponseClientHandler.class);
             responseHandler.waiter = waiter;
             responseHandler.key = key;
 
-//            logger.info("trying to enter the loop");
             while (bombsDropped < Config.instance().bombsCountFromThread
                     && Bomber.instance().all.get() < Config.instance().bombsCount
                     && channel.isActive()) {
-
-//                logger.info("in loop");
 
                 responseHandler.responseReceived = false;
 
@@ -99,13 +94,13 @@ public class ChannelRunnable implements Runnable {
 //                    logger.info("we have ended by we are in loop");
                     //If response is not received in time get the hell out of here
                     if (!responseHandler.responseReceived) {
-                        end(key, true);
+                        end(channel, true);
                         return;
                     }
                 }
             }
 
-            end(key, false);
+            end(channel, false);
 
         } catch (Exception e) {
             logger.error("Channel is broken", e);
@@ -113,20 +108,16 @@ public class ChannelRunnable implements Runnable {
         }
     }
 
-    private void end(Long key, boolean failure) {
-        Channel channel = channels.remove(key);
+    private void end(Channel channel, boolean failure) {
         working.decrementAndGet();
-//        threadAndChannel--;
-//        constructedThreads--;
-//        logger.info("threads {}, channels {}, threadAndChannel {}, constructedThreads {}",
-//                threadCount, channels.size(), threadAndChannel, constructedThreads);
+        activeChannels.decrementAndGet();
 
         if (failure) {
             Bomber.instance().failed.incrementAndGet();
         }
         try {
             if (channel != null) {
-                channel.close().sync();
+                channel.pipeline().context(ResponseClientHandler.class).close().sync();
             }
 
         } catch (InterruptedException e) {

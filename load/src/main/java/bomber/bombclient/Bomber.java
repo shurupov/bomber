@@ -57,7 +57,16 @@ public class Bomber implements Runnable {
             bootstrap.option(ChannelOption.TCP_NODELAY, true);
             bootstrap.handler(new ClientChannelInitializer());
 
-            executeThreads();
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        executeThreads();
+                    } catch (InterruptedException e) {
+                        logger.info("error creating threads");
+                    }
+                }
+            }).start();
 
             collectInfoAndLog();
 
@@ -87,9 +96,12 @@ public class Bomber implements Runnable {
         executorServices = new ArrayList<>(Config.instance().threadCount);
         for (int i = 0; i < Config.instance().threadCount; i++) {
             Thread.sleep(10);
-            executorServices.add(Executors.newSingleThreadScheduledExecutor());
-            executorServices.get(i).scheduleWithFixedDelay(new ChannelRunnable(bootstrap, channels),
+
+            ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+            service.scheduleWithFixedDelay(new ChannelRunnable(bootstrap),
                     0, 1, TimeUnit.MILLISECONDS);
+
+            executorServices.add(service);
         }
 
     }
@@ -127,7 +139,7 @@ public class Bomber implements Runnable {
             int waitingFor = tries - created;
 
             logger.info("active channels {}, working threads {}, thread executed {}",
-                    channels.size(), ChannelRunnable.working, ChannelRunnable.executed.get());
+                    ChannelRunnable.activeChannels, ChannelRunnable.working, ChannelRunnable.executed.get());
             logger.info("waiting for channels {}, tries to create channel {}, created channels {}",
                     waitingFor, tries, created);
 
@@ -145,7 +157,9 @@ public class Bomber implements Runnable {
         logger.info("shutting down");
 
         for (ExecutorService service : executorServices) {
-            while (!service.isTerminated()) {}
+            while (!service.isTerminated()) {
+                Thread.sleep(10);
+            }
         }
 
         for (Channel channel : channels.values()) {
@@ -153,5 +167,6 @@ public class Bomber implements Runnable {
         }
 
         logger.info("Shut down");
+
     }
 }

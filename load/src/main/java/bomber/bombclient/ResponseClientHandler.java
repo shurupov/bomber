@@ -85,6 +85,7 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        ctx.channel().close();
         logger.error("Response is broken", cause);
         synchronized (waiter) {
             waiter.notify();

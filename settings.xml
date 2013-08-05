@@ -4,7 +4,7 @@
     <port>8080</port>
     <threadCount>50</threadCount>
     <bombsCount>100000</bombsCount>
-    <timeout>1000</timeout>
+    <timeout>100000</timeout>
     <bombsCountFromThread>900</bombsCountFromThread>
     <fullUris>
         <fullUri>

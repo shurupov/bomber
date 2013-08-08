@@ -22,6 +22,7 @@ public class Config {
     public String host;
     public int port;
     public int threadCount;
+    public int threadRelaxTime;
     public long bombsCount;
     public long timeout;
     public int bombsCountFromThread;

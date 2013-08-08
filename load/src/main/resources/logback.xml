@@ -12,7 +12,7 @@
     <!--</root>-->
 
     <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-        <file>${user.dir}/logs/srv-info.log</file>
+        <file>${user.dir}/logs/bomber.log</file>
         <append>false</append>
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>

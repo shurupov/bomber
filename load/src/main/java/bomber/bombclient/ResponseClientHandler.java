@@ -38,7 +38,7 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
                 }
             }
 
-            if (msg instanceof  HttpContent) {
+            if (msg instanceof HttpContent) {
                 HttpContent content = (HttpContent) msg;
                 if (content.content().capacity() > 0) {
                     contentStr = new String(content.content().array());
@@ -84,7 +84,7 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        ctx.channel().close();
+        Bomber.instance().failed.incrementAndGet();
         logger.error("Response is broken", cause);
         synchronized (waiter) {
             waiter.notify();

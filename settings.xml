@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <app>
-    <host>js27.wesee.com</host>
+    <host>localhost</host>
     <port>8080</port>
-    <threadCount>1</threadCount>
-    <bombsCount>100000</bombsCount>
+    <threadCount>5</threadCount>
+    <threadRelaxTime>100</threadRelaxTime>
+    <bombsCount>200000</bombsCount>
     <timeout>1000</timeout>
     <bombsCountFromThread>900</bombsCountFromThread>
     <fullUris>

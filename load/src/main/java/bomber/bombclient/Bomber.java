@@ -68,7 +68,15 @@ public class Bomber implements Runnable {
                 }
             }).start();
 
+            long beginTime = System.currentTimeMillis();
+
             collectInfoAndLog();
+
+            long endTime = System.currentTimeMillis();
+
+            long workTime = (endTime - beginTime) / 1000;
+
+            logger.info("Bomber was working {} seconds", workTime);
 
             end();
 
@@ -99,7 +107,7 @@ public class Bomber implements Runnable {
 
             ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
             service.scheduleWithFixedDelay(new ChannelRunnable(bootstrap),
-                    0, 1, TimeUnit.MILLISECONDS);
+                    0, Config.instance().threadRelaxTime, TimeUnit.MILLISECONDS);
 
             executorServices.add(service);
         }

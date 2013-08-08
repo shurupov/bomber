@@ -71,7 +71,7 @@ public class ChannelRunnable implements Runnable {
 
             while (bombsDropped < Config.instance().bombsCountFromThread
                     && Bomber.instance().all.get() < Config.instance().bombsCount
-                    && channel.isActive()) {
+                    && channel.isOpen()) {
 
                 responseHandler.responseReceived = false;
 
@@ -80,16 +80,15 @@ public class ChannelRunnable implements Runnable {
                         getRandUri());
                 request.headers().add(HttpHeaders.Names.CONNECTION, HttpHeaders.Values.KEEP_ALIVE);
 
-                //Sending request
-                responseHandler.requestBeginTime = System.currentTimeMillis();
-                channel.writeAndFlush(request).addListener(READ);
-                bombsDropped++;
-                Bomber.instance().all.incrementAndGet();
-//                channel.read();
+                if (channel.isActive()) {
+                    responseHandler.requestBeginTime = System.currentTimeMillis();
+                    channel.writeAndFlush(request).addListener(READ);
+                    bombsDropped++;
+                }
 
                 //Waiting for response
                 synchronized (waiter) {
-                    waiter.wait(Config.instance().timeout);
+                    waiter.wait();
 //                    logger.info("we have ended by we are in loop");
                     //If response is not received in time get the hell out of here
                     if (!responseHandler.responseReceived) {
@@ -113,16 +112,19 @@ public class ChannelRunnable implements Runnable {
 
         if (failure) {
             Bomber.instance().failed.incrementAndGet();
-            /*logger.info("bombs dropped {}, bad channel localAddress {}",
-                    bombsDropped, channel.localAddress().toString());*/
+            logger.debug("bombs dropped {}, bad channel localAddress {}",
+                    bombsDropped, channel.localAddress().toString());
         }
-        try {
-            if (channel != null) {
-                channel.close().sync();
-            }
-
-        } catch (InterruptedException e) {
-            logger.error("Failure close channel", e);
+        if (channel != null) {
+            channel.close();
+            channel.disconnect().addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    if (future.isDone()) {
+                        logger.debug("channel is disconnected");
+                    }
+                }
+            });
         }
 
     }
@@ -159,6 +161,7 @@ public class ChannelRunnable implements Runnable {
     final ChannelFutureListener READ = new ChannelFutureListener() {
         @Override
         public void operationComplete(ChannelFuture future) {
+            Bomber.instance().all.incrementAndGet();
             future.channel().read();
         }
     };

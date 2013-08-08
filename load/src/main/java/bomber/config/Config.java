@@ -23,6 +23,7 @@ public class Config {
     public int port;
     public int threadCount;
     public int threadRelaxTime;
+    public int threadsIncreaseDelay;
     public long bombsCount;
     public long timeout;
     public int bombsCountFromThread;

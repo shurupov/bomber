@@ -6,6 +6,7 @@ import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.timeout.ReadTimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +86,10 @@ public class ResponseClientHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         Bomber.instance().failed.incrementAndGet();
-        logger.error("Response is broken", cause);
+        logger.debug("Response is broken", cause);
+        if (cause instanceof ReadTimeoutException) {
+            Bomber.instance().timeout.incrementAndGet();
+        }
         synchronized (waiter) {
             waiter.notify();
         }

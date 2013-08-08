@@ -38,6 +38,9 @@ public class Bomber implements Runnable {
     public AtomicLong notFound1 = new AtomicLong(0);
     public AtomicLong notFound0 = new AtomicLong(0);
     public AtomicLong failed = new AtomicLong(0);
+    public AtomicLong timeout = new AtomicLong(0);
+
+    private long beginTime = 0;
 
     private List<ScheduledExecutorService> executorServices;
 
@@ -68,15 +71,9 @@ public class Bomber implements Runnable {
                 }
             }).start();
 
-            long beginTime = System.currentTimeMillis();
+            beginTime = System.currentTimeMillis();
 
             collectInfoAndLog();
-
-            long endTime = System.currentTimeMillis();
-
-            long workTime = (endTime - beginTime) / 1000;
-
-            logger.info("Bomber was working {} seconds", workTime);
 
             end();
 
@@ -103,7 +100,7 @@ public class Bomber implements Runnable {
 
         executorServices = new ArrayList<>(Config.instance().threadCount);
         for (int i = 0; i < Config.instance().threadCount; i++) {
-            Thread.sleep(10);
+            Thread.sleep(Config.instance().threadsIncreaseDelay);
 
             ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
             service.scheduleWithFixedDelay(new ChannelRunnable(bootstrap),
@@ -119,8 +116,8 @@ public class Bomber implements Runnable {
         do {
             Thread.sleep(1000);
 
-            logger.info("all: {}, successful: {}, notFound0: {}, notFound1: {}, failed: {}",
-                    all.get(), successful, notFound0, notFound1, failed);
+            logger.info("all: {}, successful: {}, notFound0: {}, notFound1: {}, failed: {}, timeout {}",
+                    all.get(), successful, notFound0, notFound1, failed, timeout);
             List<Integer> tmpResponseTimes = new ArrayList<>(responseTime);
 
             Collections.sort(tmpResponseTimes);
@@ -153,16 +150,25 @@ public class Bomber implements Runnable {
 
             logger.info("\n");
 
+            responseTime.clear();
+
         } while (all.get() < Config.instance().bombsCount);
     }
 
     private void end() throws InterruptedException {
 
+        long endTime = System.currentTimeMillis();
+        long workTime = (endTime - beginTime) / 1000;
+        long throwoutput = all.get() / workTime;
+
+        logger.info("Bomber was working {} seconds", workTime);
+        logger.info("Throwoutput {} requests/response per second", throwoutput);
+
+        logger.info("shutting down");
+
         for (ExecutorService service : executorServices) {
             service.shutdown();
         }
-
-        logger.info("shutting down");
 
         for (ExecutorService service : executorServices) {
             while (!service.isTerminated()) {

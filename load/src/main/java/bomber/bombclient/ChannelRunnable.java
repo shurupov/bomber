@@ -116,15 +116,7 @@ public class ChannelRunnable implements Runnable {
                     bombsDropped, channel.localAddress().toString());
         }
         if (channel != null) {
-            channel.close();
-            channel.disconnect().addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    if (future.isDone()) {
-                        logger.debug("channel is disconnected");
-                    }
-                }
-            });
+            channel.close().addListener(DEREGISTER);
         }
 
     }
@@ -163,6 +155,13 @@ public class ChannelRunnable implements Runnable {
         public void operationComplete(ChannelFuture future) {
             Bomber.instance().all.incrementAndGet();
             future.channel().read();
+        }
+    };
+
+    final ChannelFutureListener DEREGISTER = new ChannelFutureListener() {
+        @Override
+        public void operationComplete(ChannelFuture future) {
+            future.channel().deregister();
         }
     };
 }

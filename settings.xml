@@ -2,11 +2,12 @@
 <app>
     <host>localhost</host>
     <port>8080</port>
-    <threadCount>15</threadCount>
+    <threadCount>100</threadCount>
     <threadsIncreaseDelay>100</threadsIncreaseDelay>
     <threadRelaxTime>100</threadRelaxTime>
     <bombsCount>300000</bombsCount>
-    <timeout>1000</timeout>
+    <delayBetweenBombs>1</delayBetweenBombs>
+    <timeout>30000</timeout>
     <bombsCountFromThread>900</bombsCountFromThread>
     <fullUris>
         <fullUri>

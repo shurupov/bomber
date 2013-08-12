@@ -58,6 +58,7 @@ public class Bomber implements Runnable {
             bootstrap.channel(NioSocketChannel.class);
             bootstrap.option(ChannelOption.SO_KEEPALIVE, true);
             bootstrap.option(ChannelOption.TCP_NODELAY, true);
+            bootstrap.option(ChannelOption.SO_REUSEADDR, false);
             bootstrap.handler(new ClientChannelInitializer());
 
             new Thread(new Runnable() {
@@ -114,6 +115,9 @@ public class Bomber implements Runnable {
     private void collectInfoAndLog() throws InterruptedException {
 
         do {
+
+            long beginTime = System.currentTimeMillis();
+
             Thread.sleep(1000);
 
             logger.info("all: {}, successful: {}, notFound0: {}, notFound1: {}, failed: {}, timeout {}",
@@ -143,10 +147,16 @@ public class Bomber implements Runnable {
             int created = ChannelRunnable.createdChannels.get();
             int waitingFor = tries - created;
 
+            long endTime = System.currentTimeMillis();
+            long workTime = (endTime - beginTime) / 1000;
+            long throwoutput = tmpResponseTimes.size() / workTime;
+
             logger.info("active channels {}, working threads {}, thread executed {}",
                     ChannelRunnable.activeChannels, ChannelRunnable.working, ChannelRunnable.executed.get());
             logger.info("waiting for channels {}, tries to create channel {}, created channels {}",
                     waitingFor, tries, created);
+
+            logger.info("throwoutput {}", throwoutput);
 
             logger.info("\n");
 

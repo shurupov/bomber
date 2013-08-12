@@ -25,6 +25,7 @@ public class Config {
     public int threadRelaxTime;
     public int threadsIncreaseDelay;
     public long bombsCount;
+    public long delayBetweenBombs;
     public long timeout;
     public int bombsCountFromThread;
 

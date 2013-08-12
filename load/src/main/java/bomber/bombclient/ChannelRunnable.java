@@ -89,13 +89,14 @@ public class ChannelRunnable implements Runnable {
                 //Waiting for response
                 synchronized (waiter) {
                     waiter.wait();
-//                    logger.info("we have ended by we are in loop");
                     //If response is not received in time get the hell out of here
                     if (!responseHandler.responseReceived) {
                         end(channel, true, bombsDropped);
                         return;
                     }
                 }
+
+                Thread.sleep(Config.instance().delayBetweenBombs);
             }
 
             end(channel, false, bombsDropped);
